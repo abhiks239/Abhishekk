@@ -22,34 +22,22 @@ jobs:
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
 
-    - name: Setup Gradle
+    - name: Setup Gradle 8.9
       uses: gradle/actions/setup-gradle@v4
+      with:
+        gradle-version: '8.9'
 
-    - name: Configure SDK
+    - name: Install SDK packages
       run: |
-        yes | sdkmanager --licenses || true
-        echo "sdk.dir=$ANDROID_HOME" > local.properties
-
-    - name: Grant execute permission
-      run: chmod +x ./gradlew || true
+        yes | sdkmanager --licenses > /dev/null || true
+        sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
     - name: Build Debug APK
-      run: |
-        if [ -f "./gradlew" ]; then
-          ./gradlew assembleDebug --stacktrace
-        else
-          gradle assembleDebug --stacktrace
-        fi
-
-    - name: Find APK
-      id: find_apk
-      run: |
-        APK_PATH=$(find . -name "*.apk" -path "*debug*" | head -n 1)
-        echo "APK_PATH=$APK_PATH" >> $GITHUB_OUTPUT
+      run: gradle assembleDebug --stacktrace
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: Lalaji-Accountant-APK
-        path: ${{ steps.find_apk.outputs.APK_PATH }}
-        
+        path: app/build/outputs/apk/debug/*.apk
+        if-no-files-found: error
