@@ -13,25 +13,6 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
 
-    - name: Find and Unzip Source Code
-      id: unzip
-      run: |
-        ZIP_FILE=$(find . -maxdepth 2 -name "*.zip" | head -n 1)
-        if [ -z "$ZIP_FILE" ]; then
-          echo "No zip found, assuming source is already extracted"
-          echo "PROJECT_DIR=$(pwd)" >> $GITHUB_OUTPUT
-        else
-          echo "Extracting $ZIP_FILE"
-          unzip -o "$ZIP_FILE" -d extracted
-          # Auto-detect project root (jahan settings.gradle ya build.gradle ho)
-          PROJECT_DIR=$(find extracted -maxdepth 3 -name "settings.gradle*" -o -name "build.gradle*" | head -n 1 | xargs dirname)
-          if [ -z "$PROJECT_DIR" ]; then
-            PROJECT_DIR="extracted"
-          fi
-          echo "PROJECT_DIR=$PROJECT_DIR" >> $GITHUB_OUTPUT
-        fi
-        echo "Detected project dir: $PROJECT_DIR"
-
     - name: Set up JDK 17
       uses: actions/setup-java@v4
       with:
@@ -44,18 +25,15 @@ jobs:
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v4
 
-    - name: Accept Licenses and Configure SDK
-      working-directory: ${{ steps.unzip.outputs.PROJECT_DIR }}
+    - name: Configure SDK
       run: |
         yes | sdkmanager --licenses || true
         echo "sdk.dir=$ANDROID_HOME" > local.properties
 
-    - name: Grant execute permission for gradlew
-      working-directory: ${{ steps.unzip.outputs.PROJECT_DIR }}
+    - name: Grant execute permission
       run: chmod +x ./gradlew || true
 
     - name: Build Debug APK
-      working-directory: ${{ steps.unzip.outputs.PROJECT_DIR }}
       run: |
         if [ -f "./gradlew" ]; then
           ./gradlew assembleDebug --stacktrace
@@ -65,14 +43,12 @@ jobs:
 
     - name: Find APK
       id: find_apk
-      working-directory: ${{ steps.unzip.outputs.PROJECT_DIR }}
       run: |
         APK_PATH=$(find . -name "*.apk" -path "*debug*" | head -n 1)
         echo "APK_PATH=$APK_PATH" >> $GITHUB_OUTPUT
-        echo "Found APK: $APK_PATH"
 
-    - name: Upload APK Artifact
+    - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: Lalaji-Accountant-APK
-        path: ${{ steps.unzip.outputs.PROJECT_DIR }}/${{ steps.find_apk.outputs.APK_PATH }}
+        path: ${{ steps.find_apk.outputs.APK_PATH }}
